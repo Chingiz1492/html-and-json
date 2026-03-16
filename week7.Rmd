@@ -1,0 +1,110 @@
+---
+title: "week7"
+author: "chingiz rabdanov"
+date: "2026-03-15"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load packages
+
+library(rvest) library(jsonlite) library(dplyr)
+
+# 1. Load HTML into R data frame
+
+html_url \<-
+"<https://raw.githubusercontent.com/Chingiz1492/html-and-json/refs/heads/main/3booksRH.html>"
+
+df_html \<- html_url \|\> read_html() \|\> \# read the HTML page
+html_element("table") \|\> \# find the
+
+<table>
+
+tag html_table(header = TRUE) \# convert to data frame, first row =
+column names
+
+cat("=== HTML data frame ===\n")
+
+print(df_html)
+
+# 2. Load JSON into a separate R data frame
+
+json_url \<-
+"<https://raw.githubusercontent.com/Chingiz1492/html-and-json/refs/heads/main/3booksRH.json>"
+
+df_json_raw \<- fromJSON(json_url) \# read JSON directly into data frame
+cat("=== JSON data frame (raw) ===\n")
+
+print(df_json)
+
+# 3. Fix the three differences in JSON
+
+# Fix 1: Convert Authors from list to string
+
+# BEFORE: list("Orlando Figes")
+
+# AFTER: "Orlando Figes"
+
+df_json_raw$Authors <- sapply(
+  df_json_raw$Authors, function(x) paste(trimws(x), collapse = ", ") )
+
+# Fix 2: Rename "Date of publication" → "Date_of_publication"
+
+# BEFORE: "Date of publication"
+
+# AFTER: "Date_of_publication"
+
+names(df_json_raw)[names(df_json_raw) == "Date of publication"] \<-
+"Date_of_publication"
+
+# Fix 3: Replace NA with "none" in ISBN_10
+
+# BEFORE: NA
+
+# AFTER: "none"
+
+df_json_raw$ISBN_10[is.na(df_json_raw$ISBN_10)] \<- "none"
+
+df_json \<- df_json_raw
+
+cat("=== JSON data frame (fixed) ===\n") print(df_json)
+
+# 4. Normalize both data frames for comparison
+
+# Align column order in JSON to match HTML
+
+df_json \<- df_json[, names(df_html)]
+
+# Reset row numbers in both data frames
+
+rownames(df_html) \<- NULL rownames(df_json) \<- NULL
+
+# Convert all columns to character to remove type differences
+
+df_html_norm \<- df_html \|\> mutate(across(everything(), as.character))
+df_json_norm \<- df_json \|\> mutate(across(everything(), as.character))
+
+# 5. Compare using identical()
+
+result \<- identical(df_html_norm, df_json_norm)
+
+if (result) { cat("\n✅ identical() = TRUE: data frames are fully
+identical\n") } else { cat("\n❌ identical() = FALSE: data frames still
+differ\n")
+
+\# Show exactly which column differs cat("\nColumn-by-column
+comparison:\n") for (col in names(df_html_norm)) { match \<-
+identical(df_html_norm[[col]], df_json_norm[[col]]) cat(" -", col, ":",
+ifelse(match, "✅ match", "❌ differ"), "\n") } }
+
+# 6. Final output
+
+cat("\n=== FINAL: HTML data frame ===\n") print(df_html)
+
+cat("\n=== FINAL: JSON data frame ===\n") print(df_json)
